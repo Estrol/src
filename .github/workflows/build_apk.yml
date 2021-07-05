@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-19.04
 
     strategy:
       fail-fast: false
@@ -515,83 +515,3 @@ jobs:
           asset_path: ./apk-x64/ChromePublic.native.mapping.tar.gz
           asset_name: Kiwi-${{ github.run_id }}.x64.native.mapping.tar.gz
           asset_content_type: application/vnd.android.package-archive
-
-      - name: Uploading artifacts to storage
-        if: ${{ github.repository_owner == 'kiwibrowser' }}
-        run: |
-          rclone copy --fast-list --transfers=16 ./apk-arm/ChromePublic.apk sync:kiwibrowser-builds/${{ github.run_id }}/arm/
-          rclone copy --fast-list --transfers=16 ./apk-arm64/ChromePublic.apk sync:kiwibrowser-builds/${{ github.run_id }}/arm64/
-          rclone copy --fast-list --transfers=16 ./apk-x86/ChromePublic.apk sync:kiwibrowser-builds/${{ github.run_id }}/x86/
-          rclone copy --fast-list --transfers=16 ./apk-x64/ChromePublic.apk sync:kiwibrowser-builds/${{ github.run_id }}/x64/
-          rclone copy --fast-list --transfers=16 ./apk-arm/ChromePublic.apk.mapping sync:kiwibrowser-builds/${{ github.run_id }}/arm/
-          rclone copy --fast-list --transfers=16 ./apk-arm64/ChromePublic.apk.mapping sync:kiwibrowser-builds/${{ github.run_id }}/arm64/
-          rclone copy --fast-list --transfers=16 ./apk-x86/ChromePublic.apk.mapping sync:kiwibrowser-builds/${{ github.run_id }}/x86/
-          rclone copy --fast-list --transfers=16 ./apk-x64/ChromePublic.apk.mapping sync:kiwibrowser-builds/${{ github.run_id }}/x64/
-
-      - name: Signing and uploading release to GitHub
-        if: ${{ github.repository_owner == 'kiwibrowser' && !contains(github.event.head_commit.message, 'release') }}
-        run: |
-          curl 'https://${{ secrets.RELEASE_HOST }}/?run_id=${{ github.run_id }}&dk=${{ secrets.DEPLOY_KEY }}'
-
-      - name: Signing and uploading release to GitHub and send to the Play Store
-        if: ${{ github.repository_owner == 'kiwibrowser' && contains(github.event.head_commit.message, 'release') }}
-        run: |
-          curl 'https://${{ secrets.RELEASE_HOST }}/?run_id=${{ github.run_id }}&dk=${{ secrets.DEPLOY_KEY }}&publish=1'
-
-      - name: Downloading artifacts from storage
-        if: ${{ github.repository_owner == 'kiwibrowser' }}
-        run: |
-          rclone copy --fast-list --transfers=128 sync:kiwibrowser-builds/${{ github.run_id }}/arm/ ./apk-arm 
-          rclone copy --fast-list --transfers=128 sync:kiwibrowser-builds/${{ github.run_id }}/arm64/ ./apk-arm64
-          rclone copy --fast-list --transfers=128 sync:kiwibrowser-builds/${{ github.run_id }}/x86/ ./apk-x86
-          rclone copy --fast-list --transfers=128 sync:kiwibrowser-builds/${{ github.run_id }}/x64/ ./apk-x64
-
-      - name: Uploading release asset (arm-signed)
-        if: ${{ github.repository_owner == 'kiwibrowser' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./apk-arm/ChromePublic-DevSigned.apk
-          asset_name: Kiwi-${{ github.run_id }}-arm-signed.apk
-          asset_content_type: application/vnd.android.package-archive
-
-      - name: Uploading release asset (arm64-signed)
-        if: ${{ github.repository_owner == 'kiwibrowser' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./apk-arm64/ChromePublic-DevSigned.apk
-          asset_name: Kiwi-${{ github.run_id }}-arm64-signed.apk
-          asset_content_type: application/vnd.android.package-archive
-
-      - name: Uploading release asset (x86-signed)
-        if: ${{ github.repository_owner == 'kiwibrowser' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./apk-x86/ChromePublic-DevSigned.apk
-          asset_name: Kiwi-${{ github.run_id }}-x86-signed.apk
-          asset_content_type: application/vnd.android.package-archive
-
-      - name: Uploading release asset (x64-signed)
-        if: ${{ github.repository_owner == 'kiwibrowser' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./apk-x64/ChromePublic-DevSigned.apk
-          asset_name: Kiwi-${{ github.run_id }}-x64-signed.apk
-          asset_content_type: application/vnd.android.package-archive
-          
-      - name: Send announcement on Discord
-        if: ${{ github.repository_owner == 'kiwibrowser' }}
-        run: |
-          curl -H 'Content-Type: application/json' -X POST -d '{"username": "Kiwi Builder", "content": "A new build of Kiwi Browser is available: https://github.com/kiwibrowser/src/releases/tag/${{ github.run_id }}"}' ${{ secrets.DISCORD_WEBHOOK }}
-
